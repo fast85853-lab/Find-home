@@ -1,0 +1,8 @@
+{
+  "name": "GetHome - Premium Rental Marketplace",
+  "description": "A high-end rental home application featuring AI-powered property descriptions, advanced search across 250+ countries, and seamless property management.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
