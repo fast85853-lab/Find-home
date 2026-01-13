@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { HashRouter as Router, Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { 
   Home as HomeIcon, 
   Search, 
@@ -8,8 +8,6 @@ import {
   User, 
   Menu, 
   X, 
-  MapPin, 
-  Globe, 
   LogOut,
   ShieldCheck,
   Mail,
@@ -23,23 +21,50 @@ import CreatePostPage from './pages/CreatePostPage.tsx';
 import ProfilePage from './pages/ProfilePage.tsx';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage.tsx';
 import ContactUsPage from './pages/ContactUsPage.tsx';
+import LoginPage from './pages/LoginPage.tsx';
+import SignUpPage from './pages/SignUpPage.tsx';
 import { Property, UserProfile } from './types.ts';
 import { MOCK_PROPERTIES } from './constants.ts';
 
 const App: React.FC = () => {
-  const [properties, setProperties] = useState<Property[]>(MOCK_PROPERTIES);
+  // Persistence: Load initial data from localStorage or use Mocks
+  const [properties, setProperties] = useState<Property[]>(() => {
+    const saved = localStorage.getItem('gethome_properties');
+    return saved ? JSON.parse(saved) : MOCK_PROPERTIES;
+  });
+  
+  const [user, setUser] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('gethome_user');
+    return saved ? JSON.parse(saved) : {
+      name: "Alex Johnson",
+      email: "alex.j@gethome.com",
+      bio: "Looking for a comfortable home and providing great stays.",
+      avatar: "https://picsum.photos/seed/user123/200/200",
+      memberSince: "Jan 2024",
+      listings: 2,
+      rating: 4.9
+    };
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('gethome_auth') === 'true';
+  });
+
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
-  
-  const [user, setUser] = useState<UserProfile>({
-    name: "Alex Johnson",
-    email: "alex.j@gethome.com",
-    bio: "Looking for a comfortable home and providing great stays.",
-    avatar: "https://picsum.photos/seed/user123/200/200",
-    memberSince: "Jan 2024",
-    listings: 2,
-    rating: 4.9
-  });
+
+  // Sync state with localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('gethome_properties', JSON.stringify(properties));
+  }, [properties]);
+
+  useEffect(() => {
+    localStorage.setItem('gethome_user', JSON.stringify(user));
+  }, [user]);
+
+  useEffect(() => {
+    localStorage.setItem('gethome_auth', isAuthenticated.toString());
+  }, [isAuthenticated]);
 
   const toggleDrawer = () => setIsDrawerOpen(!isDrawerOpen);
 
@@ -48,8 +73,13 @@ const App: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const handleLogin = () => setIsAuthenticated(true);
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setIsDrawerOpen(false);
+  };
+
   const addProperty = (newProperty: Property) => {
-    // Check if we are updating an existing one
     setProperties(prev => {
       const exists = prev.find(p => p.id === newProperty.id);
       if (exists) {
@@ -70,10 +100,16 @@ const App: React.FC = () => {
     setUser(prev => ({ ...prev, avatar: newAvatar }));
   };
 
+  // Auth Guard Component
+  // Fixed: Added React.FC type to ensure children are correctly recognized by the TS compiler
+  const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    if (!isAuthenticated) return <Navigate to="/login" replace />;
+    return <>{children}</>;
+  };
+
   return (
     <Router>
       <div className="min-h-screen bg-slate-50 flex flex-col pb-16 md:pb-0 relative">
-        {/* Global Toast Notification */}
         {notification && (
           <div className="fixed top-20 right-4 z-[100] animate-in slide-in-from-right-10 fade-in duration-300">
             <div className="bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-white/10">
@@ -83,58 +119,73 @@ const App: React.FC = () => {
           </div>
         )}
 
-        <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} user={user} />
+        {isAuthenticated && (
+          <>
+            <Drawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)} user={user} onLogout={handleLogout} />
+            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
+              <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <button onClick={toggleDrawer} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                    <Menu className="w-6 h-6 text-slate-700" />
+                  </button>
+                  <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    GetHome
+                  </Link>
+                </div>
 
-        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200">
-          <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button onClick={toggleDrawer} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <Menu className="w-6 h-6 text-slate-700" />
-              </button>
-              <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                GetHome
-              </Link>
-            </div>
+                <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-full">
+                  <NavLink to="/" icon={<HomeIcon size={18} />} label="Home" />
+                  <NavLink to="/explore" icon={<Search size={18} />} label="Explore" />
+                  <NavLink to="/create" icon={<SquarePlus size={18} />} label="Post" />
+                  <NavLink to="/profile" icon={<User size={18} />} label="Profile" />
+                </div>
 
-            <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-full">
-               <NavLink to="/" icon={<HomeIcon size={18} />} label="Home" />
-               <NavLink to="/explore" icon={<Search size={18} />} label="Explore" />
-               <NavLink to="/create" icon={<SquarePlus size={18} />} label="Post" />
-               <NavLink to="/profile" icon={<User size={18} />} label="Profile" />
-            </div>
+                <div className="flex items-center gap-3">
+                  <Link to="/profile" className="flex items-center gap-2">
+                    <img src={user.avatar} alt="avatar" className="w-9 h-9 rounded-full object-cover border-2 border-indigo-100 shadow-sm" />
+                  </Link>
+                </div>
+              </div>
+            </header>
+          </>
+        )}
 
-            <div className="flex items-center gap-3">
-              <Link to="/profile" className="flex items-center gap-2">
-                <img src={user.avatar} alt="avatar" className="w-9 h-9 rounded-full object-cover border-2 border-indigo-100 shadow-sm" />
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-6">
+        <main className={`flex-1 ${isAuthenticated ? 'max-w-7xl mx-auto w-full px-4 py-6' : ''}`}>
           <Routes>
-            <Route path="/" element={<HomePage properties={properties} />} />
-            <Route path="/explore" element={<ExplorePage properties={properties} />} />
-            <Route path="/create" element={<CreatePostPage onAdd={addProperty} />} />
+            {/* Auth Routes */}
+            <Route path="/login" element={!isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />} />
+            <Route path="/signup" element={!isAuthenticated ? <SignUpPage onLogin={handleLogin} /> : <Navigate to="/" />} />
+
+            {/* Protected Routes */}
+            <Route path="/" element={<ProtectedRoute><HomePage properties={properties} /></ProtectedRoute>} />
+            <Route path="/explore" element={<ProtectedRoute><ExplorePage properties={properties} /></ProtectedRoute>} />
+            <Route path="/create" element={<ProtectedRoute><CreatePostPage onAdd={addProperty} /></ProtectedRoute>} />
             <Route path="/profile" element={
-              <ProfilePage 
-                user={user} 
-                userProperties={properties.filter(p => p.hostName === user.name)} 
-                onUpdateAvatar={updateUserAvatar}
-                onDeleteProperty={deleteProperty}
-              />
+              <ProtectedRoute>
+                <ProfilePage 
+                  user={user} 
+                  userProperties={properties.filter(p => p.hostName === user.name)} 
+                  onUpdateAvatar={updateUserAvatar}
+                  onDeleteProperty={deleteProperty}
+                />
+              </ProtectedRoute>
             } />
-            <Route path="/privacy" element={<PrivacyPolicyPage />} />
-            <Route path="/contact" element={<ContactUsPage />} />
+            <Route path="/privacy" element={<ProtectedRoute><PrivacyPolicyPage /></ProtectedRoute>} />
+            <Route path="/contact" element={<ProtectedRoute><ContactUsPage /></ProtectedRoute>} />
+            
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
 
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-3 flex justify-between items-center z-40 shadow-lg">
-          <MobileNavLink to="/" icon={<HomeIcon size={24} />} />
-          <MobileNavLink to="/explore" icon={<Search size={24} />} />
-          <MobileNavLink to="/create" icon={<SquarePlus size={24} />} />
-          <MobileNavLink to="/profile" icon={<User size={24} />} />
-        </nav>
+        {isAuthenticated && (
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-6 py-3 flex justify-between items-center z-40 shadow-lg">
+            <MobileNavLink to="/" icon={<HomeIcon size={24} />} />
+            <MobileNavLink to="/explore" icon={<Search size={24} />} />
+            <MobileNavLink to="/create" icon={<SquarePlus size={24} />} />
+            <MobileNavLink to="/profile" icon={<User size={24} />} />
+          </nav>
+        )}
       </div>
     </Router>
   );
@@ -161,7 +212,7 @@ const MobileNavLink: React.FC<{ to: string, icon: React.ReactNode }> = ({ to, ic
   );
 };
 
-const Drawer: React.FC<{ isOpen: boolean, onClose: () => void, user: UserProfile }> = ({ isOpen, onClose, user }) => {
+const Drawer: React.FC<{ isOpen: boolean, onClose: () => void, user: UserProfile, onLogout: () => void }> = ({ isOpen, onClose, user, onLogout }) => {
   const navigate = useNavigate();
   
   const handleNavigation = (path: string) => {
@@ -190,7 +241,7 @@ const Drawer: React.FC<{ isOpen: boolean, onClose: () => void, user: UserProfile
             <DrawerItem icon={<Mail size={20} />} label="Contact Us" onClick={() => handleNavigation('/contact')} />
             <DrawerItem icon={<Info size={20} />} label="About GetHome" onClick={() => {}} />
           </nav>
-          <button className="flex items-center gap-3 p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors mt-auto font-bold"><LogOut size={20} /> Logout</button>
+          <button onClick={onLogout} className="flex items-center gap-3 p-3 text-red-500 hover:bg-red-50 rounded-xl transition-colors mt-auto font-bold"><LogOut size={20} /> Logout</button>
         </div>
       </aside>
     </>
