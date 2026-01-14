@@ -100,8 +100,12 @@ const App: React.FC = () => {
     setUser(prev => ({ ...prev, avatar: newAvatar }));
   };
 
+  const updateUserInfo = (name: string, bio: string) => {
+    setUser(prev => ({ ...prev, name, bio }));
+    showNotification("Profile Updated!");
+  };
+
   // Auth Guard Component
-  // Fixed: Added React.FC type to ensure children are correctly recognized by the TS compiler
   const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     return <>{children}</>;
@@ -166,6 +170,7 @@ const App: React.FC = () => {
                   user={user} 
                   userProperties={properties.filter(p => p.hostName === user.name)} 
                   onUpdateAvatar={updateUserAvatar}
+                  onUpdateInfo={updateUserInfo}
                   onDeleteProperty={deleteProperty}
                 />
               </ProtectedRoute>

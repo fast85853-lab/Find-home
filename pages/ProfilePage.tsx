@@ -1,20 +1,24 @@
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile, Property } from '../types';
 import PropertyCard from '../components/PropertyCard';
-import { Edit3, ShieldCheck, Star, Calendar, Camera } from 'lucide-react';
+import { Edit3, ShieldCheck, Star, Calendar, Camera, X, Check } from 'lucide-react';
 
 interface ProfilePageProps {
   user: UserProfile;
   userProperties: Property[];
   onUpdateAvatar: (url: string) => void;
+  onUpdateInfo: (name: string, bio: string) => void;
   onDeleteProperty: (id: string) => void;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdateAvatar, onDeleteProperty }) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdateAvatar, onUpdateInfo, onDeleteProperty }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(user.name);
+  const [editBio, setEditBio] = useState(user.bio);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -23,8 +27,11 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdat
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      onUpdateAvatar(url);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onUpdateAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -32,8 +39,61 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdat
     navigate('/create', { state: { editProperty: property } });
   };
 
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    onUpdateInfo(editName, editBio);
+    setIsEditing(false);
+  };
+
   return (
     <div className="space-y-10 pb-20">
+      {/* Edit Profile Modal */}
+      {isEditing && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <form 
+            onSubmit={handleSaveProfile}
+            className="w-full max-w-lg bg-white rounded-[2.5rem] p-8 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200"
+          >
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-black text-slate-900">Edit Profile</h2>
+              <button type="button" onClick={() => setIsEditing(false)} className="p-2 hover:bg-slate-100 rounded-full">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400">Your Name</label>
+                <input 
+                  required
+                  type="text" 
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all font-bold text-slate-900"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black uppercase tracking-widest text-slate-400">Bio / Description</label>
+                <textarea 
+                  rows={4}
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:border-blue-500 outline-none transition-all font-medium text-slate-700 resize-none"
+                  placeholder="Tell people about yourself..."
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit"
+              className="w-full bg-blue-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-xl shadow-blue-500/20"
+            >
+              <Check size={20} /> Save Changes
+            </button>
+          </form>
+        </div>
+      )}
+
       <section className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="h-32 bg-gradient-to-r from-blue-500 to-indigo-600"></div>
         <div className="px-8 pb-8">
@@ -58,20 +118,27 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdat
             </div>
 
             <div className="flex gap-2">
-              <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all">
+              <button 
+                onClick={() => setIsEditing(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/10"
+              >
                 <Edit3 size={18} /> Edit Info
               </button>
             </div>
           </div>
 
-          <div className="p-6 bg-slate-50 rounded-2xl">
+          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
             <p className="text-slate-600 leading-relaxed italic">"{user.bio}"</p>
           </div>
         </div>
       </section>
 
       <section>
-        <h2 className="text-2xl font-bold text-slate-900 mb-6">Active Property Listings</h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-black text-slate-900">Active Property Listings</h2>
+          <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest">{userProperties.length} Posts</span>
+        </div>
+        
         {userProperties.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {userProperties.map(property => (
@@ -84,9 +151,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdat
             ))}
           </div>
         ) : (
-          <div className="p-12 text-center bg-white border-2 border-dashed border-slate-200 rounded-3xl">
-            <p className="text-slate-500 mb-4 font-medium">You haven't listed any properties yet.</p>
-            <button onClick={() => navigate('/create')} className="text-blue-600 font-bold hover:underline">Start listing now</button>
+          <div className="p-16 text-center bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] space-y-4">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-3xl mx-auto">🏠</div>
+            <p className="text-slate-500 font-bold">You haven't listed any properties yet.</p>
+            <button 
+              onClick={() => navigate('/create')} 
+              className="bg-slate-900 text-white px-8 py-3 rounded-2xl font-bold hover:bg-slate-800 transition-all"
+            >
+              Post Your First Ad
+            </button>
           </div>
         )}
       </section>

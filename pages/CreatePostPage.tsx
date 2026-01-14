@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Property, Country } from '../types';
@@ -59,9 +58,22 @@ const CreatePostPage: React.FC<CreatePostPageProps> = ({ onAdd }) => {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const fileArray = Array.from(files);
-      const newImages = fileArray.map((file: File) => URL.createObjectURL(file));
-      setImages(prev => [...prev, ...newImages].slice(0, 4));
+      // Cast the result of Array.from to File[] to fix 'unknown' type error when calling readAsDataURL
+      const fileArray = Array.from(files) as File[];
+      
+      fileArray.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          setImages(prev => {
+            if (prev.length < 4) {
+              return [...prev, base64String];
+            }
+            return prev;
+          });
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
@@ -147,6 +159,7 @@ const CreatePostPage: React.FC<CreatePostPageProps> = ({ onAdd }) => {
               </label>
             )}
           </div>
+          <p className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest">Maximum 4 photos. Use high quality images for better response.</p>
         </div>
 
         {/* Listing Purpose */}
