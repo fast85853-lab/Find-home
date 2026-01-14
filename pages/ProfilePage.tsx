@@ -1,5 +1,5 @@
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserProfile, Property } from '../types';
 import PropertyCard from '../components/PropertyCard';
@@ -20,6 +20,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdat
   const [editName, setEditName] = useState(user.name);
   const [editBio, setEditBio] = useState(user.bio);
 
+  // Sync state when props change or when editing starts
+  useEffect(() => {
+    if (isEditing) {
+      setEditName(user.name);
+      setEditBio(user.bio);
+    }
+  }, [isEditing, user.name, user.bio]);
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
@@ -35,7 +43,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdat
     }
   };
 
-  const handleEdit = (property: Property) => {
+  const handleEditProperty = (property: Property) => {
     navigate('/create', { state: { editProperty: property } });
   };
 
@@ -146,7 +154,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ user, userProperties, onUpdat
                 key={property.id} 
                 property={property} 
                 onDelete={() => onDeleteProperty(property.id)}
-                onEdit={() => handleEdit(property)}
+                onEdit={() => handleEditProperty(property)}
               />
             ))}
           </div>

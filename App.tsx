@@ -27,7 +27,6 @@ import { Property, UserProfile } from './types.ts';
 import { MOCK_PROPERTIES } from './constants.ts';
 
 const App: React.FC = () => {
-  // Persistence: Load initial data from localStorage or use Mocks
   const [properties, setProperties] = useState<Property[]>(() => {
     const saved = localStorage.getItem('gethome_properties');
     return saved ? JSON.parse(saved) : MOCK_PROPERTIES;
@@ -53,7 +52,6 @@ const App: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Sync state with localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('gethome_properties', JSON.stringify(properties));
   }, [properties]);
@@ -101,11 +99,15 @@ const App: React.FC = () => {
   };
 
   const updateUserInfo = (name: string, bio: string) => {
+    const oldName = user.name;
     setUser(prev => ({ ...prev, name, bio }));
+    
+    // Update hostName in all properties owned by this user so they don't lose their listings
+    setProperties(prev => prev.map(p => p.hostName === oldName ? { ...p, hostName: name } : p));
+    
     showNotification("Profile Updated!");
   };
 
-  // Auth Guard Component
   const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (!isAuthenticated) return <Navigate to="/login" replace />;
     return <>{children}</>;
@@ -156,11 +158,9 @@ const App: React.FC = () => {
 
         <main className={`flex-1 ${isAuthenticated ? 'max-w-7xl mx-auto w-full px-4 py-6' : ''}`}>
           <Routes>
-            {/* Auth Routes */}
             <Route path="/login" element={!isAuthenticated ? <LoginPage onLogin={handleLogin} /> : <Navigate to="/" />} />
             <Route path="/signup" element={!isAuthenticated ? <SignUpPage onLogin={handleLogin} /> : <Navigate to="/" />} />
 
-            {/* Protected Routes */}
             <Route path="/" element={<ProtectedRoute><HomePage properties={properties} /></ProtectedRoute>} />
             <Route path="/explore" element={<ProtectedRoute><ExplorePage properties={properties} /></ProtectedRoute>} />
             <Route path="/create" element={<ProtectedRoute><CreatePostPage onAdd={addProperty} /></ProtectedRoute>} />
@@ -177,8 +177,6 @@ const App: React.FC = () => {
             } />
             <Route path="/privacy" element={<ProtectedRoute><PrivacyPolicyPage /></ProtectedRoute>} />
             <Route path="/contact" element={<ProtectedRoute><ContactUsPage /></ProtectedRoute>} />
-            
-            {/* Fallback */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>
@@ -219,7 +217,6 @@ const MobileNavLink: React.FC<{ to: string, icon: React.ReactNode }> = ({ to, ic
 
 const Drawer: React.FC<{ isOpen: boolean, onClose: () => void, user: UserProfile, onLogout: () => void }> = ({ isOpen, onClose, user, onLogout }) => {
   const navigate = useNavigate();
-  
   const handleNavigation = (path: string) => {
     navigate(path);
     onClose();
